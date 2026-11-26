@@ -1,0 +1,223 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          BT=$(ls -d "$SDK"/build-tools/*/ | sort -V | tail -1)
+          PLAT=$(ls -d "$SDK"/platforms/android-*/ | grep -E 'android-[0-9]+/$' | sort -V | tail -1)
+          AJAR="$PLAT/android.jar"
+          API=$(basename "$PLAT" | sed 's/android-//')
+          echo "build-tools: $BT  platform: $PLAT"
+          W=build; rm -rf $W
+          mkdir -p $W/src/vn/luyennoi/app $W/res/values $W/res/drawable $W/assets $W/gen $W/classes $W/dex
+          cp app/index.html $W/assets/index.html
+
+          cat > $W/AndroidManifest.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="vn.luyennoi.app">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.RECORD_AUDIO" />
+            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+            <uses-permission android:name="android.permission.VIBRATE" />
+            <application android:label="@string/app_name" android:icon="@drawable/ic_launcher"
+                android:theme="@android:style/Theme.DeviceDefault.NoActionBar" android:allowBackup="false"
+                android:usesCleartextTraffic="false">
+              <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait"
+                  android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|uiMode">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          XML
+
+          cat > $W/res/values/strings.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <string name="app_name">Luy&#7879;n n&#243;i</string>
+          </resources>
+          XML
+
+          cat > $W/res/drawable/ic_launcher.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <path android:fillColor="#14161A" android:pathData="M0,0h108v108h-108z" />
+            <path android:fillColor="#2FBF71" android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0" />
+            <path android:fillColor="#FFFFFF" android:pathData="M54,34a8,8 0,0 1,8 8v12a8,8 0,0 1,-16 0v-12a8,8 0,0 1,8 -8z" />
+            <path android:fillColor="#FFFFFF" android:pathData="M40,53h4a10,10 0,0 0,20 0h4a14,14 0,0 1,-12 13.8v5.2h6v4h-16v-4h6v-5.2a14,14 0,0 1,-12 -13.8z" />
+          </vector>
+          XML
+
+          cat > $W/src/vn/luyennoi/app/MainActivity.java <<'JAVA'
+          package vn.luyennoi.app;
+
+          import android.Manifest;
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.graphics.Color;
+          import android.media.AudioManager;
+          import android.os.Bundle;
+          import android.view.WindowManager;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.PermissionRequest;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          import java.io.ByteArrayInputStream;
+          import java.io.InputStream;
+
+          public class MainActivity extends Activity {
+              private static final String ORIGIN = "https://luyennoi.localapp/";
+              private static final int REQ_MIC = 7;
+              private WebView web;
+              private PermissionRequest pending;
+
+              @Override
+              protected void onCreate(Bundle state) {
+                  super.onCreate(state);
+                  getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                  setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+                  web = new WebView(this);
+                  web.setBackgroundColor(Color.rgb(20, 22, 26));
+                  setContentView(web);
+
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+
+                  web.addJavascriptInterface(new Bridge(), "AndroidBridge");
+
+                  web.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                          String url = request.getUrl().toString();
+                          if (!url.startsWith(ORIGIN)) {
+                              return null;
+                          }
+                          try {
+                              if (url.equals(ORIGIN) || url.startsWith(ORIGIN + "index.html")) {
+                                  InputStream in = getAssets().open("index.html");
+                                  return new WebResourceResponse("text/html", "utf-8", in);
+                              }
+                          } catch (Exception e) {
+                              // fall through to the empty response
+                          }
+                          return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
+                      }
+                  });
+
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public void onPermissionRequest(final PermissionRequest request) {
+                          runOnUiThread(new Runnable() {
+                              @Override
+                              public void run() {
+                                  if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                      request.grant(new String[] { PermissionRequest.RESOURCE_AUDIO_CAPTURE });
+                                  } else {
+                                      pending = request;
+                                      requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, REQ_MIC);
+                                  }
+                              }
+                          });
+                      }
+                  });
+
+                  web.loadUrl(ORIGIN + "index.html");
+              }
+
+              @Override
+              public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                  super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+                  if (requestCode != REQ_MIC || pending == null) {
+                      return;
+                  }
+                  PermissionRequest request = pending;
+                  pending = null;
+                  if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                      request.grant(new String[] { PermissionRequest.RESOURCE_AUDIO_CAPTURE });
+                  } else {
+                      request.deny();
+                  }
+              }
+
+              @Override
+              protected void onDestroy() {
+                  if (web != null) {
+                      web.destroy();
+                      web = null;
+                  }
+                  super.onDestroy();
+              }
+
+              final class Bridge {
+                  @JavascriptInterface
+                  public void share(final String text) {
+                      runOnUiThread(new Runnable() {
+                          @Override
+                          public void run() {
+                              Intent send = new Intent(Intent.ACTION_SEND);
+                              send.setType("text/plain");
+                              send.putExtra(Intent.EXTRA_TEXT, text);
+                              startActivity(Intent.createChooser(send, "Luyen noi"));
+                          }
+                      });
+                  }
+              }
+          }
+          JAVA
+
+          "$BT/aapt2" compile --dir $W/res -o $W/res.zip
+          "$BT/aapt2" link -o $W/base.apk -I "$AJAR" --manifest $W/AndroidManifest.xml -A $W/assets \
+            --java $W/gen --min-sdk-version 26 --target-sdk-version "$API" \
+            --version-code ${{ github.run_number }} --version-name 0.1.${{ github.run_number }} $W/res.zip
+          javac -encoding UTF-8 --release 8 -Xlint:-options -nowarn -classpath "$AJAR" -d $W/classes \
+            $(find $W/src $W/gen -name '*.java')
+          (cd $W/classes && jar cf ../classes.jar .)
+          "$BT/d8" --lib "$AJAR" --min-api 26 --output $W/dex $W/classes.jar
+          (cd $W/dex && zip -q -j ../base.apk classes.dex)
+          "$BT/zipalign" -f -p 4 $W/base.apk $W/aligned.apk
+          base64 -d app/keystore.b64 > $W/release.jks
+          "$BT/apksigner" sign --ks $W/release.jks --ks-pass pass:android --key-pass pass:android \
+            --ks-key-alias luyennoi --out LuyenNoi.apk $W/aligned.apk
+          "$BT/apksigner" verify --print-certs LuyenNoi.apk
+          ls -la LuyenNoi.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Luyen noi ${{ github.run_number }}
+          make_latest: true
+          files: LuyenNoi.apk

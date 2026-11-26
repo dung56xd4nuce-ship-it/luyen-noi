@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14161a">
+<title>Luyện nói tiếng Anh – bản thử</title>
+<style>
+  :root{
+    --bg:#14161a; --panel:#1d2026; --line:#2c3038; --ink:#f2f3f5; --mute:#9aa1ad;
+    --listen:#2fbf71; --speak:#f08a24; --wait:#4c8dff; --err:#e5484d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+  body{display:flex;flex-direction:column;min-height:100dvh}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+  header h1{font-size:16px;font-weight:600;margin:0}
+  .iconbtn{background:none;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 12px;font-size:15px}
+  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:8px 16px}
+  #status{font-size:22px;font-weight:600;text-align:center;min-height:30px}
+  #substatus{font-size:15px;color:var(--mute);text-align:center;min-height:20px;max-width:420px}
+  #big{width:220px;height:220px;border-radius:50%;border:none;font-size:22px;font-weight:700;color:#fff;
+    background:var(--wait);box-shadow:0 0 0 0 rgba(255,255,255,.2);transition:background .2s,transform .1s}
+  #big:active{transform:scale(.97)}
+  #big.listen{background:var(--listen);animation:pulse 1.6s infinite}
+  #big.speak{background:var(--speak)}
+  #big.off{background:#3a3f4a}
+  #big.connecting{background:#5a6170}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(47,191,113,.5)}70%{box-shadow:0 0 0 26px rgba(47,191,113,0)}100%{box-shadow:0 0 0 0 rgba(47,191,113,0)}}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:420px}
+  .row button{padding:16px 8px;font-size:17px;font-weight:600;border-radius:14px;border:1px solid var(--line);
+    background:var(--panel);color:var(--ink)}
+  .row button:disabled{opacity:.4}
+  #flag{border-color:#5a2a2c;color:#ffb4b6}
+  #stats{font-size:13px;color:var(--mute);text-align:center}
+  #transcriptWrap{width:100%;max-width:520px}
+  details summary{cursor:pointer;color:var(--mute);font-size:15px;padding:8px 0;text-align:center;list-style:none}
+  #transcript{max-height:40vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:15px;line-height:1.45}
+  .t-user{color:#9ee6bd}.t-ai{color:#ffd0a1}.t-sys{color:var(--mute);font-size:13px}
+  .t-line{margin:0 0 8px}
+  /* settings sheet */
+  #sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10}
+  #sheet.open{display:flex}
+  .card{background:var(--panel);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px 28px;max-height:92dvh;overflow:auto}
+  .card h2{font-size:18px;margin:0 0 12px}
+  label{display:block;font-size:14px;color:var(--mute);margin:14px 0 6px}
+  input,select{width:100%;padding:12px;font-size:16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  .hint{font-size:13px;color:var(--mute);margin-top:6px;line-height:1.4}
+  .card .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .card .actions button{flex:1;min-width:140px;padding:14px;font-size:16px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  .card .actions .primary{background:var(--wait);border-color:var(--wait);font-weight:600}
+  .card .actions .danger{color:#ffb4b6;border-color:#5a2a2c}
+  #memView{font-size:13px;color:var(--mute);white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;max-height:200px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>Luyện nói tiếng Anh</h1>
+  <button class="iconbtn" id="openSettings" aria-label="Cài đặt">Cài đặt</button>
+</header>
+
+<main>
+  <div id="status">Chạm để bắt đầu</div>
+  <div id="substatus">Nên đeo tai nghe để app không tự nghe lại giọng của chính nó.</div>
+  <button id="big" class="off" aria-label="Bắt đầu hoặc dừng buổi luyện">Bắt đầu</button>
+  <div class="row">
+    <button id="again" disabled>Nói lại</button>
+    <button id="slower" disabled>Chậm lại</button>
+    <button id="vi" disabled>Tiếng Việt</button>
+    <button id="flag" disabled>AI hiểu sai ý</button>
+  </div>
+  <div id="stats"></div>
+  <div id="transcriptWrap">
+    <details id="tdetails">
+      <summary>Xem lời thoại</summary>
+      <div id="transcript"></div>
+    </details>
+  </div>
+</main>
+
+<div id="sheet" role="dialog" aria-modal="true">
+  <div class="card">
+    <h2>Cài đặt</h2>
+    <label for="key">Gemini API key</label>
+    <input id="key" type="password" autocomplete="off" placeholder="Dán key lấy từ aistudio.google.com">
+    <div class="hint">Key chỉ lưu trong trình duyệt trên máy này, không nằm trong file app.</div>
+
+    <label for="model">Mô hình</label>
+    <select id="model">
+      <option value="gemini-3.8-live">gemini-3.8-live (mặc định)</option>
+      <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview</option>
+      <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+      <option value="custom">Tên khác…</option>
+    </select>
+    <input id="modelCustom" style="display:none;margin-top:8px" placeholder="Nhập tên mô hình">
+    <div class="hint">Nếu kết nối báo lỗi mô hình hoặc hết hạn mức miễn phí, thử mô hình khác trong danh sách.</div>
+
+    <label for="name">Tên gọi của bạn</label>
+    <input id="name" placeholder="Ví dụ: anh Dũng">
+
+    <label for="level">Mức hiện tại</label>
+    <select id="level">
+      <option value="0">0 – Gần như chưa biết tiếng Anh</option>
+      <option value="1">1 – Biết vài từ, cụm rời rạc</option>
+      <option value="2">2 – Nói được câu ngắn</option>
+      <option value="3">3 – Trò chuyện được</option>
+    </select>
+    <div class="hint">App có thể tự điều chỉnh mức sau mỗi buổi.</div>
+
+    <label for="silence">Thời gian im lặng trước khi app trả lời (ms)</label>
+    <input id="silence" type="number" min="500" max="4000" step="100">
+    <div class="hint">Người mới cần thời gian nghĩ: 1500–2000 ms. Giảm nếu thấy app phản hồi chậm.</div>
+
+    <label>Trí nhớ app đang có về bạn</label>
+    <div id="memView"></div>
+
+    <div class="actions">
+      <button class="primary" id="saveSettings">Lưu</button>
+      <button id="exportLog">Gửi nhật ký đo lường</button>
+      <button class="danger" id="wipe">Xóa toàn bộ dữ liệu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- storage ----------
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem(k); }catch{} }
+};
+const KEYS = ['els_key','els_model','els_name','els_level','els_silence','els_memory','els_logs'];
+
+let settings = {
+  key: LS.get('els_key', ''),
+  model: LS.get('els_model', 'gemini-3.8-live'),
+  name: LS.get('els_name', ''),
+  level: LS.get('els_level', 0),
+  silence: LS.get('els_silence', 1600)
+};
+let memory = LS.get('els_memory', { phrases: [], difficulties: [], sessions: 0 });
+let logs = LS.get('els_logs', []);
+
+// ---------- UI refs ----------
+const $ = id => document.getElementById(id);
+const big = $('big'), statusEl = $('status'), sub = $('substatus'), statsEl = $('stats');
+const transcript = $('transcript');
+const ctrlBtns = ['again','slower','vi','flag'].map($);
+
+function setState(s, text, subtext){
+  big.className = s;
+  statusEl.textContent = text;
+  if (subtext !== undefined) sub.textContent = subtext;
+  big.textContent = (s === 'off') ? 'Bắt đầu' : (s === 'connecting' ? 'Đang nối…' : 'Dừng');
+}
+function addLine(cls, text){
+  const p = document.createElement('p');
+  p.className = 't-line ' + cls;
+  p.textContent = text;
+  transcript.appendChild(p);
+  transcript.scrollTop = transcript.scrollHeight;
+  return p;
+}
+function vibrate(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch{} }
+
+// ---------- settings sheet ----------
+const sheet = $('sheet');
+function renderMemory(){
+  const ph = memory.phrases.slice(-15).map(p => `• ${p.phrase} (${p.meaning_vi})${p.mastered ? ' ✓' : ''}`).join('\n');
+  const df = memory.difficulties.slice(-8).map(d => `• ${d.issue}`).join('\n');
+  $('memView').textContent =
+    `Số buổi: ${memory.sessions}\nMức: ${settings.level}\n\nCụm đã luyện:\n${ph || '(chưa có)'}\n\nĐiểm hay gặp khó:\n${df || '(chưa có)'}`;
+}
+function openSheet(){
+  $('key').value = settings.key;
+  const known = [...$('model').options].some(o => o.value === settings.model);
+  $('model').value = known ? settings.model : 'custom';
+  $('modelCustom').style.display = known ? 'none' : 'block';
+  $('modelCustom').value = known ? '' : settings.model;
+  $('name').value = settings.name;
+  $('level').value = String(settings.level);
+  $('silence').value = settings.silence;
+  renderMemory();
+  sheet.classList.add('open');
+}
+$('openSettings').onclick = openSheet;
+sheet.addEventListener('click', e => { if (e.target === sheet) sheet.classList.remove('open'); });
+$('model').onchange = () => { $('modelCustom').style.display = $('model').value === 'custom' ? 'block' : 'none'; };
+$('saveSettings').onclick = () => {
+  settings.key = $('key').value.trim();
+  settings.model = $('model').value === 'custom' ? ($('modelCustom').value.trim() || 'gemini-3.8-live') : $('model').value;
+  settings.name = $('name').value.trim();
+  settings.level = Math.max(0, Math.min(3, parseInt($('level').value, 10) || 0));
+  settings.silence = Math.max(500, Math.min(4000, parseInt($('silence').value, 10) || 1600));
+  LS.set('els_key', settings.key); LS.set('els_model', settings.model); LS.set('els_name', settings.name);
+  LS.set('els_level', settings.level); LS.set('els_silence', settings.silence);
+  sheet.classList.remove('open');
+};
+$('wipe').onclick = () => {
+  const w = $('wipe');
+  if (!w.dataset.armed){ w.dataset.armed = '1'; w.textContent = 'Chạm lần nữa để xóa hẳn'; return; }
+  KEYS.forEach(LS.del);
+  location.reload();
+};
+$('exportLog').onclick = () => {
+  const json = JSON.stringify({ exportedAt: new Date().toISOString(), settings: { ...settings, key: undefined }, memory, logs }, null, 1);
+  if (window.AndroidBridge && AndroidBridge.share){ AndroidBridge.share(json.slice(0, 300000)); return; }
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nhat-ky-luyen-noi-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+
+// ---------- system instruction ----------
+function buildInstruction(){
+  const lvl = settings.level;
+  const lang = ['Guide almost entirely in Vietnamese. English only for the target sentence and chunks.',
+                'Guide mostly in Vietnamese, mixing in very simple English.',
+                'Guide mostly in simple English; switch to Vietnamese only when the learner is stuck.',
+                'Guide in English at natural speed; use Vietnamese only if asked.'][lvl];
+  const sentLen = ['3–6 words per sentence; split longer ideas into two tiny sentences',
+                   '5–8 words per sentence', '6–12 words per sentence', 'natural length'][lvl];
+  const recent = memory.phrases.filter(p => !p.mastered).slice(-6).map(p => `"${p.phrase}"`).join(', ');
+  const diffs = memory.difficulties.slice(-4).map(d => d.issue).join('; ');
+  return `You are a warm, patient spoken-English coach inside a voice app for Vietnamese adults.
+The learner${settings.name ? ' (address them as "' + settings.name + '")' : ''} may know almost no English and may read poorly. The learner must be able to finish everything WITHOUT reading the screen, so everything important must be said aloud.
+
+LEVEL: ${lvl} (0 = beginner from zero, 3 = can converse). ${lang} Target sentences: ${sentLen}.
+
+CORE LOOP (repeat for each thing the learner wants to say):
+1. Ask what they saw, did, felt or want to say today. They may answer in Vietnamese, English, or a mix — all are fine.
+2. Restate the core meaning briefly in Vietnamese. If you are not sure who/what/what happened, ask a short yes/no question to confirm BEFORE teaching. Never guess silently.
+3. NEVER add details the learner did not say. If a detail is needed for a natural sentence, ask them.
+4. Give ONE short, natural English sentence that matches what they said. Say it once slowly, then once at normal speed.
+5. Break it into chunks of 2–4 words. Have the learner repeat each chunk, then the whole sentence.
+6. Then ask a simple follow-up question about the same event so they must make a NEW sentence (not repeat the model).
+7. Later in the session, bring back an earlier phrase in a different situation.
+
+PRONUNCIATION: Judge only from the learner's actual audio. Being able to understand them is NOT the same as correct pronunciation — never say "correct" or "perfect" just because you understood. Pick at most ONE most important issue per attempt, model that sound or word slowly, allow at most 2 retries, then move on warmly. Keep confidence high; do not correct every mistake.
+
+NO GRAMMAR TERMS. Never say words like tense, verb, past simple, article. Teach whole usable chunks instead.
+
+VOICE COMMANDS (Vietnamese or English, also casual forms like "hả", "gì cơ"):
+- "chậm lại" / "slow down" → repeat your last English sentence much slower, and stay slower.
+- "nói lại" / "again" / "repeat" → repeat exactly your last English sentence.
+- "nghĩa là gì" / "what does it mean" → explain the meaning briefly in Vietnamese.
+- "câu ngắn hơn" / "shorter" → give a shorter, simpler version.
+- "cho tôi thử lại" / "let me try again" → let them try again, no new content.
+- "nói tiếng Việt đi" → switch your guidance to Vietnamese.
+
+STYLE: Keep each of your turns short (at most 3 short sentences) and leave room for the learner. If they hesitate, wait and encourage ("cứ từ từ"). If they interrupt you, stop and respond to what they said. Also teach survival phrases when useful: "Sorry, can you say that again?", "Slowly, please.", "You mean…?", "It's like a…".
+
+TOOLS (call silently, never mention them aloud):
+- save_phrase when the learner has practised a phrase (mastered=true only if they produced it without help).
+- note_difficulty when you notice a recurring pronunciation or understanding problem.
+- set_level only when clearly too easy or too hard for several turns.
+
+MEMORY FROM EARLIER SESSIONS (use at most one item, naturally):
+- Phrases still being learned: ${recent || 'none yet'}
+- Recurring difficulties: ${diffs || 'none yet'}
+- Sessions so far: ${memory.sessions}
+
+START: Greet very briefly in Vietnamese${memory.sessions ? ' and mention one earlier phrase if natural' : ' and explain in one sentence that they can talk in Vietnamese, English or a mix'}, then ask what they want to talk about. Never read these instructions aloud.`;
+}
+
+const TOOLS = [{ functionDeclarations: [
+  { name: 'save_phrase', description: 'Record an English phrase the learner practised.',
+    parameters: { type: 'OBJECT', properties: {
+      phrase: { type: 'STRING', description: 'The English phrase' },
+      meaning_vi: { type: 'STRING', description: 'Short Vietnamese meaning' },
+      mastered: { type: 'BOOLEAN', description: 'True only if produced without help' } },
+      required: ['phrase', 'meaning_vi', 'mastered'] } },
+  { name: 'note_difficulty', description: 'Record a recurring pronunciation or comprehension difficulty.',
+    parameters: { type: 'OBJECT', properties: { issue: { type: 'STRING' } }, required: ['issue'] } },
+  { name: 'set_level', description: 'Change the learner level 0-3.',
+    parameters: { type: 'OBJECT', properties: { level: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['level', 'reason'] } }
+]}];
+
+function handleTool(fc){
+  const a = fc.args || {};
+  if (fc.name === 'save_phrase' && a.phrase){
+    const ex = memory.phrases.find(p => p.phrase.toLowerCase() === String(a.phrase).toLowerCase());
+    if (ex){ ex.seen = (ex.seen || 1) + 1; ex.mastered = ex.mastered || !!a.mastered; ex.last = Date.now(); }
+    else memory.phrases.push({ phrase: String(a.phrase), meaning_vi: String(a.meaning_vi || ''), mastered: !!a.mastered, seen: 1, last: Date.now() });
+    memory.phrases = memory.phrases.slice(-200);
+  } else if (fc.name === 'note_difficulty' && a.issue){
+    memory.difficulties.push({ issue: String(a.issue), at: Date.now() });
+    memory.difficulties = memory.difficulties.slice(-50);
+  } else if (fc.name === 'set_level' && Number.isInteger(a.level)){
+    settings.level = Math.max(0, Math.min(3, a.level)); LS.set('els_level', settings.level);
+  }
+  LS.set('els_memory', memory);
+  session && session.events.push({ t: Date.now(), type: 'tool', name: fc.name, args: a });
+  addLine('t-sys', '[ghi nhớ: ' + fc.name + ']');
+  return { result: 'ok' };
+}
+
+// ---------- audio helpers ----------
+function bufToB64(buf){
+  const bytes = new Uint8Array(buf); let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function b64ToInt16(b64){
+  const bin = atob(b64); const len = bin.length; const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+  return new Int16Array(u8.buffer, 0, len >> 1);
+}
+
+const WORKLET = `
+class Mic extends AudioWorkletProcessor {
+  constructor(o){ super(); this.ratio = o.processorOptions.ratio; this.acc = 0; this.sum = 0; this.cnt = 0;
+    this.out = new Int16Array(1600); this.n = 0; this.sq = 0; }
+  process(inputs){
+    const ch = inputs[0] && inputs[0][0]; if (!ch) return true;
+    for (let i = 0; i < ch.length; i++){
+      this.sum += ch[i]; this.cnt++; this.acc += 1;
+      if (this.acc >= this.ratio){
+        this.acc -= this.ratio;
+        let s = this.sum / this.cnt; this.sum = 0; this.cnt = 0;
+        s = Math.max(-1, Math.min(1, s)); this.sq += s * s;
+        this.out[this.n++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        if (this.n === this.out.length){
+          const rms = Math.sqrt(this.sq / this.n);
+          this.port.postMessage({ pcm: this.out.buffer, rms }, [this.out.buffer]);
+          this.out = new Int16Array(1600); this.n = 0; this.sq = 0;
+        }
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('mic', Mic);`;
+
+// ---------- session ----------
+let session = null;
+
+class Session {
+  constructor(){
+    this.events = []; this.turns = []; this.started = Date.now();
+    this.sources = new Set(); this.nextTime = 0; this.muted = false;
+    this.lastVoice = 0; this.awaitFirstAudio = false; this.userLine = null; this.aiLine = null;
+    this.tokensIn = 0; this.tokensOut = 0; this.flags = 0; this.closed = false;
+  }
+  log(type, data){ this.events.push(Object.assign({ t: Date.now(), type }, data || {})); }
+
+  async start(){
+    setState('connecting', 'Đang kết nối…', '');
+    // mic first (needs user gesture)
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+    this.inCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    this.outCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+    await this.inCtx.resume(); await this.outCtx.resume();
+    const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+    await this.inCtx.audioWorklet.addModule(url);
+    const src = this.inCtx.createMediaStreamSource(this.stream);
+    this.node = new AudioWorkletNode(this.inCtx, 'mic', { processorOptions: { ratio: this.inCtx.sampleRate / 16000 } });
+    this.node.port.onmessage = e => this.onMic(e.data);
+    src.connect(this.node);
+    try { this.wake = await navigator.wakeLock.request('screen'); } catch {}
+
+    const ws = new WebSocket('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' + encodeURIComponent(settings.key));
+    this.ws = ws;
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ setup: {
+        model: 'models/' + settings.model,
+        generationConfig: { responseModalities: ['AUDIO'] },
+        systemInstruction: { parts: [{ text: buildInstruction() }] },
+        tools: TOOLS,
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+        realtimeInputConfig: { automaticActivityDetection: { silenceDurationMs: settings.silence } },
+        contextWindowCompression: { slidingWindow: {} }
+      }}));
+      this.log('open', { model: settings.model, level: settings.level });
+    };
+    ws.onmessage = async e => {
+      let txt = e.data;
+      if (txt instanceof Blob) txt = await txt.text();
+      let msg; try { msg = JSON.parse(txt); } catch { return; }
+      this.onServer(msg);
+    };
+    ws.onerror = () => { this.log('ws_error'); };
+    ws.onclose = ev => {
+      this.log('close', { code: ev.code, reason: ev.reason });
+      if (!this.closed){
+        const why = ev.reason ? ev.reason : ('mã ' + ev.code);
+        this.stop('Mất kết nối: ' + why);
+      }
+    };
+  }
+
+  onMic({ pcm, rms }){
+    if (!this.ready || this.muted || !this.ws || this.ws.readyState !== 1) return;
+    if (rms > 0.02 && this.sources.size === 0){ this.lastVoice = Date.now(); this.awaitFirstAudio = true; }
+    this.ws.send(JSON.stringify({ realtimeInput: { audio: { data: bufToB64(pcm), mimeType: 'audio/pcm;rate=16000' } } }));
+  }
+
+  onServer(msg){
+    if (msg.setupComplete){
+      this.ready = true;
+      memory.sessions++; LS.set('els_memory', memory);
+      ctrlBtns.forEach(b => b.disabled = false);
+      setState('listen', 'Đang nghe bạn', 'Cứ nói tự nhiên, tiếng Việt hay tiếng Anh đều được.');
+      // ask the coach to open the conversation
+      this.ws.send(JSON.stringify({ realtimeInput: { text: 'Bắt đầu buổi luyện.' } }));
+      return;
+    }
+    if (msg.usageMetadata){
+      const u = msg.usageMetadata;
+      this.tokensIn = Math.max(this.tokensIn, u.promptTokenCount || 0);
+      this.tokensOut += (u.responseTokenCount || u.candidatesTokenCount || 0);
+    }
+    if (msg.toolCall){
+      const responses = (msg.toolCall.functionCalls || []).map(fc => ({ id: fc.id, name: fc.name, response: handleTool(fc) }));
+      this.ws.send(JSON.stringify({ toolResponse: { functionResponses: responses } }));
+    }
+    if (msg.goAway){ addLine('t-sys', '[máy chủ sắp đóng phiên – hết thời lượng một phiên]'); }
+    const sc = msg.serverContent;
+    if (!sc) return;
+    if (sc.interrupted){
+      this.stopPlayback();
+      this.log('interrupted');
+      addLine('t-sys', '[bạn đã ngắt lời]');
+      this.aiLine = null;
+    }
+    if (sc.inputTranscription && sc.inputTranscription.text){
+      if (!this.userLine) this.userLine = addLine('t-user', 'Bạn: ');
+      this.userLine.textContent += sc.inputTranscription.text;
+    }
+    if (sc.modelTurn && sc.modelTurn.parts){
+      for (const p of sc.modelTurn.parts){
+        if (p.inlineData && p.inlineData.data && String(p.inlineData.mimeType || 'audio').startsWith('audio')){
+          if (this.awaitFirstAudio && this.lastVoice){
+            const lat = Date.now() - this.lastVoice;
+            if (lat < 20000){ this.turns.push(lat); this.log('latency', { ms: lat }); }
+            this.awaitFirstAudio = false;
+          }
+          this.play(p.inlineData.data);
+        }
+      }
+    }
+    if (sc.outputTranscription && sc.outputTranscription.text){
+      if (this.userLine){ this.log('user_said', { text: this.userLine.textContent }); this.userLine = null; }
+      if (!this.aiLine) this.aiLine = addLine('t-ai', 'App: ');
+      this.aiLine.textContent += sc.outputTranscription.text;
+    }
+    if (sc.turnComplete){
+      if (this.aiLine) this.log('ai_said', { text: this.aiLine.textContent });
+      if (this.userLine){ this.log('user_said', { text: this.userLine.textContent }); }
+      this.aiLine = null; this.userLine = null;
+      this.renderStats();
+    }
+  }
+
+  play(b64){
+    const i16 = b64ToInt16(b64);
+    const f32 = new Float32Array(i16.length);
+    for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+    const buf = this.outCtx.createBuffer(1, f32.length, 24000);
+    buf.copyToChannel(f32, 0);
+    const s = this.outCtx.createBufferSource();
+    s.buffer = buf; s.connect(this.outCtx.destination);
+    const now = this.outCtx.currentTime;
+    this.nextTime = Math.max(this.nextTime, now + 0.03);
+    s.start(this.nextTime); this.nextTime += buf.duration;
+    this.sources.add(s);
+    if (this.sources.size === 1) setState('speak', 'App đang nói', 'Bạn có thể nói chen vào bất cứ lúc nào.');
+    s.onended = () => {
+      this.sources.delete(s);
+      if (this.sources.size === 0 && !this.closed){
+        setState('listen', 'Đến lượt bạn', ''); vibrate(40);
+      }
+    };
+  }
+  stopPlayback(){
+    this.sources.forEach(s => { try { s.onended = null; s.stop(); } catch {} });
+    this.sources.clear(); this.nextTime = 0;
+    if (!this.closed) setState('listen', 'Đang nghe bạn', '');
+  }
+  sendText(t){
+    if (this.ws && this.ws.readyState === 1){
+      this.stopPlayback();
+      this.ws.send(JSON.stringify({ realtimeInput: { text: t } }));
+      this.log('button', { text: t });
+      addLine('t-sys', '[nút: ' + t + ']');
+    }
+  }
+  renderStats(){
+    const sorted = [...this.turns].sort((a, b) => a - b);
+    const med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
+    const p90 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.9))] : null;
+    const usd = this.tokensIn * 3e-6 + this.tokensOut * 12e-6;
+    const mins = ((Date.now() - this.started) / 60000).toFixed(1);
+    statsEl.textContent = `${mins} phút · ${this.turns.length} lượt · trễ trung vị ${med ? (med / 1000).toFixed(1) + 's' : '–'}` +
+      (p90 ? ` (P90 ${(p90 / 1000).toFixed(1)}s)` : '') + ` · hiểu sai: ${this.flags}` +
+      ` · ước chi phí nếu trả phí ~${usd.toFixed(3)} USD`;
+  }
+  stop(reason){
+    if (this.closed) return; this.closed = true;
+    try { this.ws && this.ws.close(); } catch {}
+    try { this.node && this.node.disconnect(); } catch {}
+    try { this.stream && this.stream.getTracks().forEach(t => t.stop()); } catch {}
+    this.stopPlayback();
+    try { this.inCtx && this.inCtx.close(); this.outCtx && this.outCtx.close(); } catch {}
+    try { this.wake && this.wake.release(); } catch {}
+    ctrlBtns.forEach(b => b.disabled = true);
+    this.renderStats();
+    logs.push({ start: new Date(this.started).toISOString(), durationMin: +((Date.now() - this.started) / 60000).toFixed(2),
+      model: settings.model, level: settings.level, latenciesMs: this.turns, flags: this.flags,
+      tokensIn: this.tokensIn, tokensOut: this.tokensOut, events: this.events.slice(-500), endReason: reason || 'user' });
+    logs = logs.slice(-30); LS.set('els_logs', logs);
+    setState('off', reason ? 'Đã dừng' : 'Đã kết thúc buổi luyện', reason || 'Chạm để bắt đầu buổi mới.');
+    session = null;
+  }
+}
+
+// ---------- controls ----------
+big.onclick = async () => {
+  if (session){ session.stop(); return; }
+  if (!settings.key){ openSheet(); sub.textContent = 'Cần nhập Gemini API key trước.'; return; }
+  if (!navigator.mediaDevices || !window.AudioWorkletNode){
+    setState('off', 'Trình duyệt không hỗ trợ', 'Hãy cập nhật "Android System WebView" trong CH Play rồi mở lại app.'); return;
+  }
+  transcript.innerHTML = '';
+  session = new Session();
+  try { await session.start(); }
+  catch (err){
+    const s = session; session = null;
+    if (s) { s.closed = true; try { s.stream && s.stream.getTracks().forEach(t => t.stop()); } catch {} }
+    const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+    setState('off', denied ? 'Chưa có quyền micro' : 'Không khởi động được',
+      denied ? 'Vào Cài đặt điện thoại → Ứng dụng → Luyện nói → Quyền → bật Micro, rồi mở lại app.' : String(err && err.message || err));
+  }
+};
+$('again').onclick = () => session && session.sendText('Nói lại câu tiếng Anh vừa rồi.');
+$('slower').onclick = () => session && session.sendText('Chậm lại, nói lại câu vừa rồi thật chậm.');
+$('vi').onclick = () => session && session.sendText('Nói tiếng Việt đi, giải thích lại bằng tiếng Việt.');
+$('flag').onclick = () => {
+  if (!session) return;
+  session.flags++; session.log('flag_misunderstood', { lastUser: session.userLine ? session.userLine.textContent : null });
+  addLine('t-sys', '[đã đánh dấu: AI hiểu sai ý]'); vibrate(80); session.renderStats();
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && session && session.wake === null) {
+    navigator.wakeLock && navigator.wakeLock.request('screen').then(w => session && (session.wake = w)).catch(() => {});
+  }
+});
+
+if (!settings.key) sub.textContent = 'Lần đầu: vào Cài đặt, dán Gemini API key rồi chạm nút lớn.';
+})();
+</script>
+</body>
+</html>
