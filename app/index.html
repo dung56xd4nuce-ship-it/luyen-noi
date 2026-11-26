@@ -17,10 +17,17 @@
   header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
   header h1{font-size:16px;font-weight:600;margin:0}
   .iconbtn{background:none;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 12px;font-size:15px}
-  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:8px 16px}
-  #status{font-size:22px;font-weight:600;text-align:center;min-height:30px}
+  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px;padding:4px 16px 12px}
+  #status{font-size:20px;font-weight:600;text-align:center;min-height:26px}
   #substatus{font-size:15px;color:var(--mute);text-align:center;min-height:20px;max-width:420px}
-  #big{width:220px;height:220px;border-radius:50%;border:none;font-size:22px;font-weight:700;color:#fff;
+  #stage{flex:1;width:100%;max-width:560px;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
+  .lbl{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+  #target{font-size:32px;font-weight:700;line-height:1.25;color:#ffd0a1;text-wrap:balance;overflow-wrap:anywhere;cursor:pointer}
+  #targetVi{font-size:19px;line-height:1.35;color:var(--mute);text-wrap:balance}
+  #heard{font-size:28px;font-weight:600;line-height:1.25;color:#9ee6bd;text-wrap:balance;overflow-wrap:anywhere;min-height:35px}
+  #heard.live{color:#c9f5dc}
+  #heardLbl{margin-top:14px}
+  #big{width:132px;height:132px;flex:none;border-radius:50%;border:none;font-size:22px;font-weight:700;color:#fff;
     background:var(--wait);box-shadow:0 0 0 0 rgba(255,255,255,.2);transition:background .2s,transform .1s}
   #big:active{transform:scale(.97)}
   #big.listen{background:var(--listen);animation:pulse 1.6s infinite}
@@ -63,6 +70,13 @@
 <main>
   <div id="status">Chạm để bắt đầu</div>
   <div id="substatus">Nên đeo tai nghe để app không tự nghe lại giọng của chính nó.</div>
+  <section id="stage" aria-live="polite">
+    <div class="lbl" id="targetLbl" hidden>Câu mẫu · chạm để nghe lại</div>
+    <div id="target" role="button"></div>
+    <div id="targetVi"></div>
+    <div class="lbl" id="heardLbl" hidden>Bạn vừa nói</div>
+    <div id="heard"></div>
+  </section>
   <button id="big" class="off" aria-label="Bắt đầu hoặc dừng buổi luyện">Bắt đầu</button>
   <div class="row">
     <button id="again" disabled>Nói lại</button>
@@ -165,6 +179,15 @@ function addLine(cls, text){
   transcript.scrollTop = transcript.scrollHeight;
   return p;
 }
+const stage = { target: $('target'), vi: $('targetVi'), heard: $('heard') };
+function showTarget(en, vi){
+  stage.target.textContent = en || ''; stage.vi.textContent = vi || '';
+  $('targetLbl').hidden = !en;
+}
+function showHeard(text, live){
+  stage.heard.textContent = text || ''; stage.heard.classList.toggle('live', !!live);
+  $('heardLbl').hidden = !text;
+}
 function vibrate(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch{} }
 
 // ---------- settings sheet ----------
@@ -242,7 +265,10 @@ CORE LOOP (repeat for each thing the learner wants to say):
 6. Then ask a simple follow-up question about the same event so they must make a NEW sentence (not repeat the model).
 7. Later in the session, bring back an earlier phrase in a different situation.
 
+SCREEN CAPTION: Every time you give the learner an English sentence or chunk to say (the model sentence, each 2–4 word chunk, a shorter version, a survival phrase), FIRST call show_phrase with that exact English text and its short Vietnamese meaning, THEN say it. The learner reads it in large letters to remember it. Never call it for your Vietnamese explanations.
+
 PRONUNCIATION: Judge only from the learner's actual audio. Being able to understand them is NOT the same as correct pronunciation — never say "correct" or "perfect" just because you understood. Pick at most ONE most important issue per attempt, model that sound or word slowly, allow at most 2 retries, then move on warmly. Keep confidence high; do not correct every mistake.
+If what the learner said does not clearly match the target (for example the target is "It's my job" but you heard something like "Es mayo"), do NOT say "tuyệt vời", "rất tốt", "đúng rồi" or "khá tốt". Say kindly what you heard ("Mình nghe ra là …"), say the target again slowly, and let them try again. Praise only a clear match, and then praise briefly.
 
 NO GRAMMAR TERMS. Never say words like tense, verb, past simple, article. Teach whole usable chunks instead.
 
@@ -253,6 +279,7 @@ VOICE COMMANDS (Vietnamese or English, also casual forms like "hả", "gì cơ")
 - "câu ngắn hơn" / "shorter" → give a shorter, simpler version.
 - "cho tôi thử lại" / "let me try again" → let them try again, no new content.
 - "nói tiếng Việt đi" → switch your guidance to Vietnamese.
+- "tạm dừng" / "dừng lại" / "nghỉ thôi" / "kết thúc" → say one short goodbye in Vietnamese, then call end_session.
 
 STYLE: Keep each of your turns short (at most 3 short sentences) and leave room for the learner. If they hesitate, wait and encourage ("cứ từ từ"). If they interrupt you, stop and respond to what they said. Also teach survival phrases when useful: "Sorry, can you say that again?", "Slowly, please.", "You mean…?", "It's like a…".
 
@@ -260,6 +287,8 @@ TOOLS (call silently, never mention them aloud):
 - save_phrase when the learner has practised a phrase (mastered=true only if they produced it without help).
 - note_difficulty when you notice a recurring pronunciation or understanding problem.
 - set_level only when clearly too easy or too hard for several turns.
+- show_phrase before saying any English sentence or chunk the learner should say (see SCREEN CAPTION).
+- end_session when the learner asks to stop or pause.
 
 MEMORY FROM EARLIER SESSIONS (use at most one item, naturally):
 - Phrases still being learned: ${recent || 'none yet'}
@@ -278,6 +307,12 @@ const TOOLS = [{ functionDeclarations: [
       required: ['phrase', 'meaning_vi', 'mastered'] } },
   { name: 'note_difficulty', description: 'Record a recurring pronunciation or comprehension difficulty.',
     parameters: { type: 'OBJECT', properties: { issue: { type: 'STRING' } }, required: ['issue'] } },
+  { name: 'show_phrase', description: 'Show the English sentence or chunk the learner should say, in large letters on the screen.',
+    parameters: { type: 'OBJECT', properties: {
+      en: { type: 'STRING', description: 'Exact English text the learner should say' },
+      vi: { type: 'STRING', description: 'Short Vietnamese meaning' } }, required: ['en'] } },
+  { name: 'end_session', description: 'End the practice session after your goodbye, when the learner asks to stop or pause.',
+    parameters: { type: 'OBJECT', properties: { reason: { type: 'STRING' } } } },
   { name: 'set_level', description: 'Change the learner level 0-3.',
     parameters: { type: 'OBJECT', properties: { level: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['level', 'reason'] } }
 ]}];
@@ -292,6 +327,13 @@ function handleTool(fc){
   } else if (fc.name === 'note_difficulty' && a.issue){
     memory.difficulties.push({ issue: String(a.issue), at: Date.now() });
     memory.difficulties = memory.difficulties.slice(-50);
+  } else if (fc.name === 'show_phrase' && a.en){
+    showTarget(String(a.en), String(a.vi || ''));
+    session && session.log('show_phrase', { en: a.en, vi: a.vi });
+    return { result: 'shown' };
+  } else if (fc.name === 'end_session'){
+    session && session.endSoon();
+    return { result: 'ending' };
   } else if (fc.name === 'set_level' && Number.isInteger(a.level)){
     settings.level = Math.max(0, Math.min(3, a.level)); LS.set('els_level', settings.level);
   }
@@ -347,6 +389,12 @@ class Session {
     this.sources = new Set(); this.nextTime = 0; this.muted = false;
     this.lastVoice = 0; this.awaitFirstAudio = false; this.userLine = null; this.aiLine = null;
     this.tokensIn = 0; this.tokensOut = 0; this.flags = 0; this.closed = false;
+    this.handle = null; this.everReady = false; this.retries = 0; this.ending = false;
+  }
+  endSoon(){
+    this.ending = true;
+    clearTimeout(this.endTimer);
+    this.endTimer = setTimeout(() => this.stop(), this.sources.size ? 12000 : 2500);
   }
   log(type, data){ this.events.push(Object.assign({ t: Date.now(), type }, data || {})); }
 
@@ -365,7 +413,11 @@ class Session {
     this.node.port.onmessage = e => this.onMic(e.data);
     src.connect(this.node);
     try { this.wake = await navigator.wakeLock.request('screen'); } catch {}
+    this.connect();
+  }
 
+  connect(){
+    this.ready = false;
     const ws = new WebSocket('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' + encodeURIComponent(settings.key));
     this.ws = ws;
     ws.onopen = () => {
@@ -377,7 +429,8 @@ class Session {
         inputAudioTranscription: {},
         outputAudioTranscription: {},
         realtimeInputConfig: { automaticActivityDetection: { silenceDurationMs: settings.silence } },
-        contextWindowCompression: { slidingWindow: {} }
+        contextWindowCompression: { slidingWindow: {} },
+        sessionResumption: this.handle ? { handle: this.handle } : {}
       }}));
       this.log('open', { model: settings.model, level: settings.level });
     };
@@ -390,10 +443,17 @@ class Session {
     ws.onerror = () => { this.log('ws_error'); };
     ws.onclose = ev => {
       this.log('close', { code: ev.code, reason: ev.reason });
-      if (!this.closed){
-        const why = ev.reason ? ev.reason : ('mã ' + ev.code);
-        this.stop('Mất kết nối: ' + why);
+      if (this.closed || ws !== this.ws) return;
+      const why = ev.reason ? ev.reason : ('mã ' + ev.code);
+      if (this.ending){ this.stop(); return; }
+      if (this.everReady && this.retries < 3 && ev.code !== 1008){
+        this.retries++;
+        this.stopPlayback();
+        setState('connecting', 'Đang nối lại…', 'Mạng chập chờn, chờ vài giây.');
+        setTimeout(() => { if (!this.closed) this.connect(); }, 1200 * this.retries);
+        return;
       }
+      this.stop('Mất kết nối: ' + why);
     };
   }
 
@@ -406,12 +466,26 @@ class Session {
   onServer(msg){
     if (msg.setupComplete){
       this.ready = true;
-      memory.sessions++; LS.set('els_memory', memory);
       ctrlBtns.forEach(b => b.disabled = false);
-      setState('listen', 'Đang nghe bạn', 'Cứ nói tự nhiên, tiếng Việt hay tiếng Anh đều được.');
-      // ask the coach to open the conversation
-      this.ws.send(JSON.stringify({ realtimeInput: { text: 'Bắt đầu buổi luyện.' } }));
+      if (!this.everReady){
+        this.everReady = true;
+        memory.sessions++; LS.set('els_memory', memory);
+        setState('listen', 'Đang nghe bạn', 'Cứ nói tự nhiên, tiếng Việt hay tiếng Anh đều được.');
+        this.ws.send(JSON.stringify({ realtimeInput: { text: 'Bắt đầu buổi luyện.' } }));
+      } else {
+        this.log('reconnected', { resumed: !!this.handle });
+        addLine('t-sys', '[đã nối lại]');
+        setState('listen', 'Đã nối lại', 'Cứ nói tiếp.');
+        if (!this.handle){
+          const t = stage.target.textContent;
+          this.ws.send(JSON.stringify({ realtimeInput: { text: 'Kết nối vừa bị gián đoạn. Tiếp tục buổi luyện ngắn gọn' + (t ? ', câu đang luyện là: "' + t + '"' : '') + '.' } }));
+        }
+      }
       return;
+    }
+    if (msg.sessionResumptionUpdate){
+      const u = msg.sessionResumptionUpdate;
+      if (u.resumable && u.newHandle) this.handle = u.newHandle;
     }
     if (msg.usageMetadata){
       const u = msg.usageMetadata;
@@ -432,8 +506,11 @@ class Session {
       this.aiLine = null;
     }
     if (sc.inputTranscription && sc.inputTranscription.text){
-      if (!this.userLine) this.userLine = addLine('t-user', 'Bạn: ');
+      if (!this.userLine){ this.userLine = addLine('t-user', 'Bạn: '); this.heardText = ''; }
       this.userLine.textContent += sc.inputTranscription.text;
+      this.heardText = (this.heardText || '') + sc.inputTranscription.text;
+      showHeard(this.heardText.trim(), true);
+      this.retries = 0;
     }
     if (sc.modelTurn && sc.modelTurn.parts){
       for (const p of sc.modelTurn.parts){
@@ -448,7 +525,7 @@ class Session {
       }
     }
     if (sc.outputTranscription && sc.outputTranscription.text){
-      if (this.userLine){ this.log('user_said', { text: this.userLine.textContent }); this.userLine = null; }
+      if (this.userLine){ this.log('user_said', { text: this.userLine.textContent }); this.userLine = null; showHeard((this.heardText || '').trim(), false); }
       if (!this.aiLine) this.aiLine = addLine('t-ai', 'App: ');
       this.aiLine.textContent += sc.outputTranscription.text;
     }
@@ -476,6 +553,7 @@ class Session {
     s.onended = () => {
       this.sources.delete(s);
       if (this.sources.size === 0 && !this.closed){
+        if (this.ending){ clearTimeout(this.endTimer); this.endTimer = setTimeout(() => this.stop(), 600); return; }
         setState('listen', 'Đến lượt bạn', ''); vibrate(40);
       }
     };
@@ -505,6 +583,7 @@ class Session {
   }
   stop(reason){
     if (this.closed) return; this.closed = true;
+    clearTimeout(this.endTimer);
     try { this.ws && this.ws.close(); } catch {}
     try { this.node && this.node.disconnect(); } catch {}
     try { this.stream && this.stream.getTracks().forEach(t => t.stop()); } catch {}
@@ -530,6 +609,7 @@ big.onclick = async () => {
     setState('off', 'Trình duyệt không hỗ trợ', 'Hãy cập nhật "Android System WebView" trong CH Play rồi mở lại app.'); return;
   }
   transcript.innerHTML = '';
+  showTarget('', ''); showHeard('', false);
   session = new Session();
   try { await session.start(); }
   catch (err){
@@ -539,6 +619,10 @@ big.onclick = async () => {
     setState('off', denied ? 'Chưa có quyền micro' : 'Không khởi động được',
       denied ? 'Vào Cài đặt điện thoại → Ứng dụng → Luyện nói → Quyền → bật Micro, rồi mở lại app.' : String(err && err.message || err));
   }
+};
+stage.target.onclick = () => {
+  const t = stage.target.textContent;
+  if (session && t) session.sendText('Đọc lại thật rõ câu mẫu: "' + t + '"');
 };
 $('again').onclick = () => session && session.sendText('Nói lại câu tiếng Anh vừa rồi.');
 $('slower').onclick = () => session && session.sendText('Chậm lại, nói lại câu vừa rồi thật chậm.');
