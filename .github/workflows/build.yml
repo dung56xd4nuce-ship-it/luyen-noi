@@ -78,6 +78,7 @@ jobs:
           import android.Manifest;
           import android.app.Activity;
           import android.content.Intent;
+          import android.net.Uri;
           import android.content.pm.PackageManager;
           import android.graphics.Color;
           import android.media.AudioManager;
@@ -94,6 +95,7 @@ jobs:
           import android.webkit.WebResourceResponse;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
+          import android.webkit.ValueCallback;
           import android.webkit.WebViewClient;
 
           import java.io.ByteArrayInputStream;
@@ -142,6 +144,16 @@ jobs:
                   web.addJavascriptInterface(new Bridge(), "AndroidBridge");
 
                   web.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                          String url = request.getUrl().toString();
+                          if (url.startsWith(ORIGIN)) {
+                              return false;
+                          }
+                          openExternal(url);
+                          return true;
+                      }
+
                       @Override
                       public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                           String url = request.getUrl().toString();
@@ -204,7 +216,45 @@ jobs:
                   super.onDestroy();
               }
 
+              private void openExternal(String url) {
+                  try {
+                      startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                  } catch (Exception e) {
+                      // no browser installed
+                  }
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (web == null) {
+                      finish();
+                      return;
+                  }
+                  web.evaluateJavascript("(window.onAndroidBack && window.onAndroidBack()) ? '1' : '0'",
+                      new ValueCallback<String>() {
+                          @Override
+                          public void onReceiveValue(String value) {
+                              if (value == null || !value.contains("1")) {
+                                  finish();
+                              }
+                          }
+                      });
+              }
+
               final class Bridge {
+                  @JavascriptInterface
+                  public void openUrl(final String url) {
+                      if (url == null || !(url.startsWith("https://"))) {
+                          return;
+                      }
+                      runOnUiThread(new Runnable() {
+                          @Override
+                          public void run() {
+                              openExternal(url);
+                          }
+                      });
+                  }
+
                   @JavascriptInterface
                   public void share(final String text) {
                       runOnUiThread(new Runnable() {

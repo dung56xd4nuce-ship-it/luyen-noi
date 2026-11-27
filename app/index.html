@@ -27,6 +27,33 @@
   #heard{font-size:28px;font-weight:600;line-height:1.25;color:#9ee6bd;text-wrap:balance;overflow-wrap:anywhere;min-height:35px}
   #heard.live{color:#c9f5dc}
   #heardLbl{margin-top:14px}
+  #appEn{font-size:30px;font-weight:700;line-height:1.25;color:#ffe3c4;text-wrap:balance;overflow-wrap:anywhere}
+  #appVi{font-size:17px;line-height:1.4;color:var(--mute);text-wrap:pretty;max-width:520px;
+    display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  #targetLbl{margin-top:12px}
+  .keyrow{display:flex;gap:8px}
+  .keyrow input{flex:1;min-width:0}
+  .keyrow button{flex:none;padding:0 14px;font-size:15px;font-weight:600;border-radius:10px;border:1px solid var(--wait);background:transparent;color:#a9c6ff}
+  /* API key guide */
+  #guide{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #guide .gbar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  #guide .gbar h2{flex:1;font-size:18px;margin:0}
+  #guide .gbar button{padding:8px 14px;font-size:15px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  #guide .gbody{max-width:560px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:22px}
+  #guide .intro{font-size:16px;line-height:1.5;color:var(--ink);margin:0}
+  #guide .go{display:block;text-align:center;padding:16px;font-size:18px;font-weight:700;border-radius:14px;border:none;background:var(--wait);color:#fff;width:100%}
+  .gstep{display:grid;grid-template-columns:36px 1fr;gap:4px 12px;align-items:start}
+  .gnum{width:36px;height:36px;border-radius:50%;background:var(--wait);color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center}
+  .gstep h3{font-size:18px;margin:6px 0 2px;line-height:1.3}
+  .gstep p{grid-column:2;font-size:16px;line-height:1.5;margin:0;color:#d5d9e0}
+  .gstep figure{grid-column:1 / -1;margin:10px 0 0}
+  .gstep svg{width:100%;height:auto;display:block;border-radius:14px}
+  .gstep figcaption{font-size:13px;color:var(--mute);margin-top:6px;text-align:center}
+  .gnote{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:15px;line-height:1.5}
+  .gnote h3{font-size:16px;margin:0 0 6px}
+  .gnote ul{margin:0;padding-left:20px}
+  .gnote li{margin:4px 0}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0d0f12;padding:1px 6px;border-radius:6px;color:#ffe3c4}
   #big{width:132px;height:132px;flex:none;border-radius:50%;border:none;font-size:22px;font-weight:700;color:#fff;
     background:var(--wait);box-shadow:0 0 0 0 rgba(255,255,255,.2);transition:background .2s,transform .1s}
   #big:active{transform:scale(.97)}
@@ -71,6 +98,9 @@
   <div id="status">Chạm để bắt đầu</div>
   <div id="substatus">Nên đeo tai nghe để app không tự nghe lại giọng của chính nó.</div>
   <section id="stage" aria-live="polite">
+    <div class="lbl" id="appLbl" hidden>App nói</div>
+    <div id="appEn"></div>
+    <div id="appVi"></div>
     <div class="lbl" id="targetLbl" hidden>Câu mẫu · chạm để nghe lại</div>
     <div id="target" role="button"></div>
     <div id="targetVi"></div>
@@ -93,12 +123,171 @@
   </div>
 </main>
 
+<div id="guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle" hidden>
+  <div class="gbar">
+    <h2 id="guideTitle">Cách lấy Gemini API key</h2>
+    <button type="button" id="closeGuide">Đóng</button>
+  </div>
+  <div class="gbody">
+    <p class="intro">Key là một chuỗi chữ giúp app nói chuyện với Google. Lấy miễn phí, không cần thẻ ngân hàng, mất khoảng 2 phút. Làm ngay trên điện thoại này.</p>
+    <button type="button" class="go" id="goStudio">Mở trang lấy key</button>
+
+    <div class="gstep">
+      <div class="gnum">1</div><h3>Mở trang Google AI Studio</h3>
+      <p>Bấm nút xanh "Mở trang lấy key" ở trên. Trang <code>aistudio.google.com/apikey</code> sẽ mở trong Chrome.</p>
+      <figure>
+        <svg viewBox="0 0 320 200" role="img" aria-label="Trình duyệt mở trang aistudio.google.com/apikey">
+          <rect width="320" height="200" fill="#1d2026"/>
+          <rect x="16" y="14" width="288" height="30" rx="15" fill="#0d0f12" stroke="#4c8dff" stroke-width="2"/>
+          <circle cx="34" cy="29" r="5" fill="none" stroke="#9aa1ad" stroke-width="1.5"/>
+          <text x="48" y="34" fill="#f2f3f5" font-size="13" font-family="system-ui,sans-serif">aistudio.google.com/apikey</text>
+          <rect x="16" y="60" width="288" height="124" rx="10" fill="#f6f7f9"/>
+          <rect x="32" y="78" width="120" height="12" rx="6" fill="#c9ced6"/>
+          <rect x="32" y="100" width="200" height="8" rx="4" fill="#dde1e7"/>
+          <rect x="32" y="116" width="170" height="8" rx="4" fill="#dde1e7"/>
+          <rect x="32" y="140" width="110" height="28" rx="14" fill="#2f6fe4"/>
+          <text x="87" y="158" text-anchor="middle" fill="#fff" font-size="11" font-family="system-ui,sans-serif" font-weight="600">Sign in</text>
+        </svg>
+        <figcaption>Hình minh họa. Giao diện thật có thể hơi khác.</figcaption>
+      </figure>
+    </div>
+
+    <div class="gstep">
+      <div class="gnum">2</div><h3>Đăng nhập Gmail cá nhân</h3>
+      <p>Chọn tài khoản Gmail của bạn (dạng <code>…@gmail.com</code>). Không dùng email công ty, vì email công ty hay bị chặn tạo key.</p>
+      <figure>
+        <svg viewBox="0 0 320 200" role="img" aria-label="Chọn tài khoản Gmail cá nhân">
+          <rect width="320" height="200" fill="#1d2026"/>
+          <rect x="40" y="16" width="240" height="168" rx="12" fill="#f6f7f9"/>
+          <text x="160" y="44" text-anchor="middle" fill="#202124" font-size="14" font-weight="700" font-family="system-ui,sans-serif">Chọn tài khoản</text>
+          <rect x="56" y="62" width="208" height="44" rx="8" fill="#e3edff" stroke="#2f6fe4" stroke-width="2"/>
+          <circle cx="78" cy="84" r="12" fill="#2fbf71"/>
+          <text x="98" y="80" fill="#202124" font-size="12" font-weight="600" font-family="system-ui,sans-serif">Tài khoản của bạn</text>
+          <text x="98" y="96" fill="#5f6368" font-size="11" font-family="system-ui,sans-serif">ten.ban@gmail.com</text>
+          <rect x="56" y="116" width="208" height="44" rx="8" fill="#fff" stroke="#dde1e7"/>
+          <circle cx="78" cy="138" r="12" fill="#c9ced6"/>
+          <text x="98" y="134" fill="#9aa0a6" font-size="12" font-family="system-ui,sans-serif">Email công ty</text>
+          <text x="98" y="150" fill="#d93025" font-size="11" font-family="system-ui,sans-serif">không nên dùng</text>
+        </svg>
+        <figcaption>Chọn Gmail cá nhân.</figcaption>
+      </figure>
+    </div>
+
+    <div class="gstep">
+      <div class="gnum">3</div><h3>Đồng ý điều khoản (chỉ lần đầu)</h3>
+      <p>Lần đầu vào, trang sẽ hỏi bạn đồng ý điều khoản sử dụng. Đánh dấu ô đồng ý rồi bấm tiếp tục.</p>
+    </div>
+
+    <div class="gstep">
+      <div class="gnum">4</div><h3>Bấm "Create API key"</h3>
+      <p>Tìm nút <b>Create API key</b> (tiếng Việt: <b>Tạo khóa API</b>). Trên điện thoại, có thể phải mở menu ☰ ở góc trái rồi chọn mục <b>Get API key</b> trước.</p>
+      <figure>
+        <svg viewBox="0 0 320 200" role="img" aria-label="Nút Create API key được khoanh tròn">
+          <rect width="320" height="200" fill="#1d2026"/>
+          <rect x="16" y="14" width="288" height="172" rx="10" fill="#f6f7f9"/>
+          <text x="32" y="44" fill="#202124" font-size="15" font-weight="700" font-family="system-ui,sans-serif">API Keys</text>
+          <rect x="172" y="28" width="118" height="30" rx="15" fill="#2f6fe4"/>
+          <text x="231" y="47" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="system-ui,sans-serif">Create API key</text>
+          <ellipse cx="231" cy="43" rx="70" ry="25" fill="none" stroke="#f08a24" stroke-width="3"/>
+          <rect x="32" y="80" width="256" height="10" rx="5" fill="#dde1e7"/>
+          <rect x="32" y="100" width="210" height="10" rx="5" fill="#dde1e7"/>
+          <path d="M206 150 L226 76" stroke="#f08a24" stroke-width="3" stroke-linecap="round"/>
+          <path d="M214 80 L226 76 L229 89" fill="none" stroke="#f08a24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="196" y="170" text-anchor="middle" fill="#b3540a" font-size="12" font-weight="700" font-family="system-ui,sans-serif">Bấm vào đây</text>
+        </svg>
+        <figcaption>Nút màu xanh "Create API key".</figcaption>
+      </figure>
+    </div>
+
+    <div class="gstep">
+      <div class="gnum">5</div><h3>Chọn tạo trong dự án mới</h3>
+      <p>Nếu hiện bảng hỏi chọn dự án, chọn <b>Create API key in new project</b> (Tạo trong dự án mới). Chờ vài giây để Google tạo key.</p>
+      <figure>
+        <svg viewBox="0 0 320 200" role="img" aria-label="Chọn Create API key in new project">
+          <rect width="320" height="200" fill="#1d2026"/>
+          <rect x="30" y="22" width="260" height="156" rx="12" fill="#f6f7f9"/>
+          <text x="160" y="50" text-anchor="middle" fill="#202124" font-size="14" font-weight="700" font-family="system-ui,sans-serif">Create API key</text>
+          <rect x="48" y="68" width="224" height="40" rx="20" fill="#2f6fe4" stroke="#f08a24" stroke-width="3"/>
+          <text x="160" y="92" text-anchor="middle" fill="#fff" font-size="12" font-weight="700" font-family="system-ui,sans-serif">Create API key in new project</text>
+          <text x="160" y="128" text-anchor="middle" fill="#5f6368" font-size="11" font-family="system-ui,sans-serif">hoặc chọn dự án có sẵn</text>
+          <rect x="48" y="138" width="224" height="26" rx="8" fill="#fff" stroke="#dde1e7"/>
+        </svg>
+        <figcaption>Chọn dòng trên cùng là nhanh nhất.</figcaption>
+      </figure>
+    </div>
+
+    <div class="gstep">
+      <div class="gnum">6</div><h3>Sao chép key</h3>
+      <p>Key hiện ra là một chuỗi dài bắt đầu bằng <code>AIza</code>. Bấm biểu tượng sao chép (hai ô vuông chồng nhau) hoặc nút <b>Copy</b>.</p>
+      <figure>
+        <svg viewBox="0 0 320 200" role="img" aria-label="Key bắt đầu bằng AIza và nút sao chép">
+          <rect width="320" height="200" fill="#1d2026"/>
+          <rect x="16" y="30" width="288" height="140" rx="10" fill="#f6f7f9"/>
+          <text x="32" y="60" fill="#202124" font-size="13" font-weight="700" font-family="system-ui,sans-serif">API key đã tạo</text>
+          <rect x="32" y="76" width="210" height="36" rx="8" fill="#fff" stroke="#dde1e7"/>
+          <text x="44" y="99" fill="#202124" font-size="13" font-family="ui-monospace,Consolas,monospace">AIzaSy••••••••••••</text>
+          <rect x="252" y="76" width="36" height="36" rx="8" fill="#e3edff" stroke="#f08a24" stroke-width="3"/>
+          <rect x="262" y="88" width="13" height="15" rx="2" fill="none" stroke="#2f6fe4" stroke-width="2"/>
+          <rect x="266" y="84" width="13" height="15" rx="2" fill="#e3edff" stroke="#2f6fe4" stroke-width="2"/>
+          <text x="32" y="140" fill="#1e8e3e" font-size="12" font-weight="600" font-family="system-ui,sans-serif">Gói (Plan): Free  ✓ miễn phí</text>
+        </svg>
+        <figcaption>Cột gói ghi "Free" nghĩa là bạn không bị tính tiền.</figcaption>
+      </figure>
+    </div>
+
+    <div class="gstep">
+      <div class="gnum">7</div><h3>Quay lại app và dán key</h3>
+      <p>Mở lại app Luyện nói → <b>Cài đặt</b>. Chạm và giữ vào ô key, chọn <b>Dán</b>, rồi bấm <b>Lưu</b>. Xong. Chạm nút tròn để bắt đầu nói.</p>
+      <figure>
+        <svg viewBox="0 0 320 200" role="img" aria-label="Dán key vào ô trong Cài đặt của app rồi bấm Lưu">
+          <rect width="320" height="200" fill="#14161a"/>
+          <rect x="16" y="20" width="288" height="164" rx="14" fill="#1d2026" stroke="#2c3038"/>
+          <text x="32" y="48" fill="#f2f3f5" font-size="14" font-weight="700" font-family="system-ui,sans-serif">Cài đặt</text>
+          <text x="32" y="72" fill="#9aa1ad" font-size="11" font-family="system-ui,sans-serif">Gemini API key</text>
+          <rect x="32" y="80" width="176" height="34" rx="8" fill="#14161a" stroke="#f08a24" stroke-width="2.5"/>
+          <text x="42" y="102" fill="#f2f3f5" font-size="12" font-family="ui-monospace,Consolas,monospace">AIzaSy•••••••</text>
+          <rect x="72" y="118" width="58" height="26" rx="6" fill="#f2f3f5"/>
+          <text x="101" y="135" text-anchor="middle" fill="#202124" font-size="12" font-weight="600" font-family="system-ui,sans-serif">Dán</text>
+          <rect x="216" y="80" width="72" height="34" rx="8" fill="none" stroke="#4c8dff"/>
+          <text x="252" y="101" text-anchor="middle" fill="#a9c6ff" font-size="9" font-family="system-ui,sans-serif">Xem hướng dẫn</text>
+          <rect x="32" y="152" width="96" height="24" rx="8" fill="#4c8dff"/>
+          <text x="80" y="168" text-anchor="middle" fill="#fff" font-size="12" font-weight="700" font-family="system-ui,sans-serif">Lưu</text>
+        </svg>
+        <figcaption>Giữ ngón tay vào ô để hiện chữ "Dán".</figcaption>
+      </figure>
+    </div>
+
+    <div class="gnote">
+      <h3>Nếu app báo lỗi</h3>
+      <ul>
+        <li><b>Lỗi về key hoặc "API key not valid":</b> sao chép lại key, chú ý không thừa dấu cách ở đầu hay cuối.</li>
+        <li><b>Key ghi "Unrestricted" (không giới hạn):</b> trên trang API Keys, chạm vào nhãn đó, chọn <b>Add restrictions</b> → <b>Restrict to Gemini API only</b>. Key cũ không giới hạn có thể bị Google từ chối.</li>
+        <li><b>Lỗi mô hình hoặc hết hạn mức (429):</b> vào Cài đặt, đổi sang mô hình khác trong danh sách, hoặc chờ vài phút.</li>
+        <li><b>Không thấy nút Create API key:</b> đổi sang Gmail cá nhân khác, vì một số tài khoản tổ chức bị khóa tính năng này.</li>
+      </ul>
+    </div>
+
+    <div class="gnote">
+      <h3>Giữ key an toàn</h3>
+      <ul>
+        <li>Key giống như mật khẩu: không gửi cho người khác, không đăng lên mạng.</li>
+        <li>Nếu lỡ để lộ, vào trang API Keys xóa key cũ và tạo key mới.</li>
+      </ul>
+    </div>
+
+    <button type="button" class="go" id="goStudio2">Mở trang lấy key</button>
+  </div>
+</div>
+
 <div id="sheet" role="dialog" aria-modal="true">
   <div class="card">
     <h2>Cài đặt</h2>
     <label for="key">Gemini API key</label>
-    <input id="key" type="password" autocomplete="off" placeholder="Dán key lấy từ aistudio.google.com">
-    <div class="hint">Key chỉ lưu trong trình duyệt trên máy này, không nằm trong file app.</div>
+    <div class="keyrow">
+      <input id="key" type="password" autocomplete="off" placeholder="Dán key bắt đầu bằng AIza…">
+      <button type="button" id="openGuide">Xem hướng dẫn</button>
+    </div>
+    <div class="hint">Chưa có key? Bấm "Xem hướng dẫn". Key chỉ lưu trên điện thoại này.</div>
 
     <label for="model">Mô hình</label>
     <select id="model">
@@ -182,7 +371,30 @@ function addLine(cls, text){
 const stage = { target: $('target'), vi: $('targetVi'), heard: $('heard') };
 function showTarget(en, vi){
   stage.target.textContent = en || ''; stage.vi.textContent = vi || '';
+  stage.target.hidden = false; stage.vi.hidden = false;
   $('targetLbl').hidden = !en;
+}
+const VI_RE = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+const VI_WORDS = /^(ok|oke|nhé|nha|nhe|anh|chị|em|bạn|con|cho|theo|nói|lại|nào|thử|vậy|thế)$/i;
+function splitAppText(text){
+  const parts = (text.match(/[^.!?…:;"“”()\n]+[.!?…]*/g) || []).map(s => s.trim()).filter(s => /[a-zA-ZÀ-ỹ]/.test(s));
+  const en = [], vi = [];
+  for (const s of parts){
+    const words = s.replace(/[.,!?…]/g, '').split(/\s+/).filter(Boolean);
+    const isVi = VI_RE.test(s) || (words.length > 0 && words.every(w => VI_WORDS.test(w)));
+    (isVi ? vi : en).push(s);
+  }
+  return { en: en.join(' '), vi: vi.join(' ') };
+}
+function showApp(text){
+  const { en, vi } = splitAppText(text || '');
+  $('appEn').textContent = en; $('appVi').textContent = vi;
+  $('appLbl').hidden = !(en || vi);
+  // hide the separate model sentence when the app is already saying the same English
+  const norm = s => s.toLowerCase().replace(/[^a-z' ]/g, '').replace(/\s+/g, ' ').trim();
+  const dup = en && stage.target.textContent && norm(en).includes(norm(stage.target.textContent));
+  stage.target.hidden = !!dup; $('targetLbl').hidden = !!dup || !stage.target.textContent;
+  stage.vi.hidden = !!dup;
 }
 function showHeard(text, live){
   stage.heard.textContent = text || ''; stage.heard.classList.toggle('live', !!live);
@@ -211,10 +423,27 @@ function openSheet(){
   sheet.classList.add('open');
 }
 $('openSettings').onclick = openSheet;
+const STUDIO_URL = 'https://aistudio.google.com/apikey';
+function openExternal(url){
+  try { if (window.AndroidBridge && AndroidBridge.openUrl){ AndroidBridge.openUrl(url); return; } } catch (e) {}
+  window.open(url, '_blank');
+}
+function openGuide(){ $('guide').hidden = false; $('guide').scrollTop = 0; }
+function closeGuide(){ $('guide').hidden = true; }
+$('openGuide').onclick = openGuide;
+$('closeGuide').onclick = closeGuide;
+$('goStudio').onclick = () => openExternal(STUDIO_URL);
+$('goStudio2').onclick = () => openExternal(STUDIO_URL);
+// Android back button: close the guide, then the settings sheet, before leaving the app
+window.onAndroidBack = () => {
+  if (!$('guide').hidden){ closeGuide(); return true; }
+  if (sheet.classList.contains('open')){ sheet.classList.remove('open'); return true; }
+  return false;
+};
 sheet.addEventListener('click', e => { if (e.target === sheet) sheet.classList.remove('open'); });
 $('model').onchange = () => { $('modelCustom').style.display = $('model').value === 'custom' ? 'block' : 'none'; };
 $('saveSettings').onclick = () => {
-  settings.key = $('key').value.trim();
+  settings.key = $('key').value.replace(/\s+/g, '');
   settings.model = $('model').value === 'custom' ? ($('modelCustom').value.trim() || 'gemini-3.8-live') : $('model').value;
   settings.name = $('name').value.trim();
   settings.level = Math.max(0, Math.min(3, parseInt($('level').value, 10) || 0));
@@ -526,8 +755,10 @@ class Session {
     }
     if (sc.outputTranscription && sc.outputTranscription.text){
       if (this.userLine){ this.log('user_said', { text: this.userLine.textContent }); this.userLine = null; showHeard((this.heardText || '').trim(), false); }
-      if (!this.aiLine) this.aiLine = addLine('t-ai', 'App: ');
+      if (!this.aiLine){ this.aiLine = addLine('t-ai', 'App: '); this.appText = ''; }
       this.aiLine.textContent += sc.outputTranscription.text;
+      this.appText = (this.appText || '') + sc.outputTranscription.text;
+      showApp(this.appText);
     }
     if (sc.turnComplete){
       if (this.aiLine) this.log('ai_said', { text: this.aiLine.textContent });
@@ -609,7 +840,7 @@ big.onclick = async () => {
     setState('off', 'Trình duyệt không hỗ trợ', 'Hãy cập nhật "Android System WebView" trong CH Play rồi mở lại app.'); return;
   }
   transcript.innerHTML = '';
-  showTarget('', ''); showHeard('', false);
+  showTarget('', ''); showHeard('', false); showApp('');
   session = new Session();
   try { await session.start(); }
   catch (err){
