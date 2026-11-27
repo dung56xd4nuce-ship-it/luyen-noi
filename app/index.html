@@ -384,7 +384,8 @@ function splitAppText(text){
     const isVi = VI_RE.test(s) || (words.length > 0 && words.every(w => VI_WORDS.test(w)));
     (isVi ? vi : en).push(s);
   }
-  return { en: en.join(' '), vi: vi.join(' ') };
+  const join = arr => arr.map(s => /[.!?…]$/.test(s) ? s : s + '.').join(' ');
+  return { en: join(en), vi: join(vi) };
 }
 function showApp(text){
   const { en, vi } = splitAppText(text || '');
